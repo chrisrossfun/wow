@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guild Spec Roller</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d0b09; --panel:#17130f; --panel2:#1f1a14; --line:#3a2f22;
+    --gold:#d9b25f; --gold-dim:#8f7440; --text:#ece4d6; --muted:#9d917f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,sans-serif;color:var(--text);
+    background:radial-gradient(ellipse at top,#2a1f12 0%,var(--bg) 60%) fixed;min-height:100vh}
+  .wrap{max-width:980px;margin:0 auto;padding:28px 18px 60px}
+  h1{font-family:Cinzel,serif;font-weight:800;text-align:center;letter-spacing:.06em;
+    margin:0;font-size:clamp(26px,5vw,40px);color:var(--gold);text-shadow:0 2px 18px rgba(217,178,95,.25)}
+  .sub{text-align:center;color:var(--muted);margin:6px 0 26px;font-size:14px}
+  .tabs{display:flex;gap:8px;justify-content:center;margin-bottom:18px}
+  .tab{font-family:Cinzel,serif;font-weight:600;background:var(--panel);border:1px solid var(--line);
+    color:var(--muted);padding:10px 18px;border-radius:8px;cursor:pointer;font-size:15px}
+  .tab.on{color:var(--gold);border-color:var(--gold-dim);background:var(--panel2)}
+  .panel{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+    border-radius:14px;padding:20px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  label.h{display:block;font-family:Cinzel,serif;color:var(--gold);font-size:14px;margin:0 0 8px;letter-spacing:.04em}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{border:1px solid var(--line);background:#120f0c;color:var(--muted);border-radius:999px;
+    padding:6px 11px;font-size:13px;cursor:pointer;user-select:none;transition:.15s}
+  .chip.on{color:#111;font-weight:600}
+  .chip.role.on{background:var(--gold);border-color:var(--gold)}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .small{font-size:12px;color:var(--muted)}
+  .linkbtn{background:none;border:0;color:var(--gold-dim);cursor:pointer;font-size:12px;padding:0;text-decoration:underline}
+  .btn{font-family:Cinzel,serif;font-weight:800;letter-spacing:.06em;border:1px solid #b8913f;
+    background:linear-gradient(180deg,#e8c56f,#b8893a);color:#1b1206;border-radius:10px;
+    padding:14px 28px;font-size:18px;cursor:pointer;box-shadow:0 6px 24px rgba(217,178,95,.2)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.ghost{background:transparent;color:var(--gold);font-size:14px;padding:9px 16px;box-shadow:none}
+  .center{text-align:center}
+  .result{margin:26px auto 4px;max-width:520px;min-height:190px;border-radius:14px;border:1px solid var(--line);
+    background:#0f0c0a;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px;
+    position:relative;overflow:hidden}
+  .result .glow{position:absolute;inset:-40%;opacity:.18;filter:blur(40px);transition:background .2s}
+  .result .cls{font-family:Cinzel,serif;font-size:15px;letter-spacing:.2em;text-transform:uppercase;position:relative}
+  .result .spec{font-family:Cinzel,serif;font-weight:800;font-size:clamp(30px,7vw,46px);position:relative;line-height:1.1;margin:4px 0}
+  .result .role{position:relative;font-size:13px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+  .result.rolling .spec{opacity:.85}
+  .result.done{animation:pop .35s ease-out}
+  @keyframes pop{0%{transform:scale(.96)}60%{transform:scale(1.03)}100%{transform:scale(1)}}
+  textarea{width:100%;min-height:170px;background:#0f0c0a;color:var(--text);border:1px solid var(--line);
+    border-radius:10px;padding:10px;font:14px Inter,sans-serif;resize:vertical}
+  select{background:#0f0c0a;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:14px Inter}
+  table{width:100%;border-collapse:collapse;margin-top:18px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);font-size:14px}
+  th{font-family:Cinzel,serif;color:var(--gold);font-weight:600;font-size:13px}
+  tr.grp td{background:#1b1610;color:var(--gold-dim);font-family:Cinzel,serif;font-size:12px;letter-spacing:.1em}
+  .pill{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+  .reroll{background:none;border:1px solid var(--line);color:var(--muted);border-radius:6px;cursor:pointer;font-size:12px;padding:3px 8px}
+  .reroll:hover{color:var(--gold);border-color:var(--gold-dim)}
+  .history{margin-top:16px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+  .history span{font-size:12px;padding:3px 9px;border-radius:999px;background:#120f0c;border:1px solid var(--line)}
+  .note{min-height:18px;font-size:13px;color:#e07a5f;margin-top:8px}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gold);color:#111;
+    padding:9px 16px;border-radius:8px;font-weight:600;font-size:14px;opacity:0;transition:.25s;pointer-events:none}
+  .toast.show{opacity:1}
+  .count{color:var(--gold);font-weight:600}
+  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:26px}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Guild Spec Roller</h1>
+  <p class="sub">Let fate decide. A random class &amp; spec from all 40 current Retail specs.</p>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="solo">Single Roll</button>
+    <button class="tab" data-tab="guild">Roll for the Group</button>
+  </div>
+
+  <!-- Shared filters -->
+  <div class="panel">
+    <div class="grid">
+      <div>
+        <label class="h">Roles</label>
+        <div class="chips" id="roleChips"></div>
+        <p class="small" style="margin:10px 0 0">Pool: <span class="count" id="poolCount">40</span> specs</p>
+      </div>
+      <div>
+        <label class="h">Classes
+          <button class="linkbtn" id="allCls">all</button> · <button class="linkbtn" id="noCls">none</button>
+        </label>
+        <div class="chips" id="classChips"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Solo -->
+  <section id="tab-solo" style="margin-top:18px">
+    <div class="panel center">
+      <div class="result" id="result">
+        <div class="glow" id="glow"></div>
+        <div class="cls" id="rCls">Ready</div>
+        <div class="spec" id="rSpec">?</div>
+        <div class="role" id="rRole">Press roll</div>
+      </div>
+      <div class="note" id="soloNote"></div>
+      <div class="row" style="justify-content:center;margin-top:10px">
+        <button class="btn" id="rollBtn">ROLL</button>
+        <button class="btn ghost" id="copySolo">Copy result</button>
+      </div>
+      <div class="history" id="history"></div>
+    </div>
+  </section>
+
+  <!-- Guild -->
+  <section id="tab-guild" class="hidden" style="margin-top:18px">
+    <div class="panel">
+      <div class="grid">
+        <div>
+          <label class="h">Players (one per line)</label>
+          <textarea id="names" placeholder="Chru&#10;Thrall&#10;Jaina&#10;Anduin&#10;Sylvanas"></textarea>
+        </div>
+        <div>
+          <label class="h">Mode</label>
+          <select id="mode" style="width:100%">
+            <option value="free">Free-for-all — anyone gets anything</option>
+            <option value="dungeon">Dungeon groups — 1 tank, 1 healer, 3 DPS per 5</option>
+            <option value="raid">Raid comp — 2 tanks, healers ≈ 1 per 5, rest DPS</option>
+          </select>
+          <div style="margin-top:14px" class="row">
+            <label class="row small" style="gap:6px;cursor:pointer"><input type="checkbox" id="unique" checked> No duplicate specs (where possible)</label>
+          </div>
+          <div style="margin-top:8px" class="row">
+            <label class="row small" style="gap:6px;cursor:pointer"><input type="checkbox" id="shuffle" checked> Shuffle who gets which role</label>
+          </div>
+          <p class="small" style="margin-top:14px;line-height:1.5">Role &amp; class filters above still apply. In dungeon/raid modes, if your filters remove all tanks or healers, those slots fall back to whatever's left.</p>
+          <div class="row" style="margin-top:14px">
+            <button class="btn" id="rollGuild">ROLL ALL</button>
+            <button class="btn ghost" id="copyGuild">Copy for Discord</button>
+          </div>
+          <div class="note" id="guildNote"></div>
+        </div>
+      </div>
+      <div id="guildOut"></div>
+    </div>
+  </section>
+
+  <footer>Includes Devourer Demon Hunter · 13 classes · 40 specs · rolls use your browser's secure random generator</footer>
+</div>
+<div class="toast" id="toast">Copied!</div>
+
+<script>
+const CLASSES = [
+  {n:"Death Knight", c:"#C41E3A", s:[["Blood","Tank"],["Frost","DPS"],["Unholy","DPS"]]},
+  {n:"Demon Hunter", c:"#A330C9", s:[["Havoc","DPS"],["Vengeance","Tank"],["Devourer","DPS"]]},
+  {n:"Druid",        c:"#FF7C0A", s:[["Balance","DPS"],["Feral","DPS"],["Guardian","Tank"],["Restoration","Healer"]]},
+  {n:"Evoker",       c:"#33937F", s:[["Devastation","DPS"],["Preservation","Healer"],["Augmentation","DPS"]]},
+  {n:"Hunter",       c:"#AAD372", s:[["Beast Mastery","DPS"],["Marksmanship","DPS"],["Survival","DPS"]]},
+  {n:"Mage",         c:"#3FC7EB", s:[["Arcane","DPS"],["Fire","DPS"],["Frost","DPS"]]},
+  {n:"Monk",         c:"#00FF98", s:[["Brewmaster","Tank"],["Mistweaver","Healer"],["Windwalker","DPS"]]},
+  {n:"Paladin",      c:"#F48CBA", s:[["Holy","Healer"],["Protection","Tank"],["Retribution","DPS"]]},
+  {n:"Priest",       c:"#FFFFFF", s:[["Discipline","Healer"],["Holy","Healer"],["Shadow","DPS"]]},
+  {n:"Rogue",        c:"#FFF468", s:[["Assassination","DPS"],["Outlaw","DPS"],["Subtlety","DPS"]]},
+  {n:"Shaman",       c:"#0070DD", s:[["Elemental","DPS"],["Enhancement","DPS"],["Restoration","Healer"]]},
+  {n:"Warlock",      c:"#8788EE", s:[["Affliction","DPS"],["Demonology","DPS"],["Destruction","DPS"]]},
+  {n:"Warrior",      c:"#C69B6D", s:[["Arms","DPS"],["Fury","DPS"],["Protection","Tank"]]},
+];
+const SPECS = CLASSES.flatMap(k => k.s.map(([spec,role]) => ({cls:k.n, color:k.c, spec, role})));
+const ROLES = ["Tank","Healer","DPS"];
+const ROLE_ICON = {Tank:"🛡️", Healer:"✚", DPS:"⚔️"};
+
+const state = { roles:new Set(ROLES), classes:new Set(CLASSES.map(c=>c.n)), history:[], last:null, guild:[] };
+
+// secure random int [0,n)
+function rint(n){ const a=new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; }
+function pick(arr){ return arr[rint(arr.length)]; }
+function shuffle(arr){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){const j=rint(i+1);[a[i],a[j]]=[a[j],a[i]];} return a; }
+
+const pool = () => SPECS.filter(s => state.roles.has(s.role) && state.classes.has(s.cls));
+
+// ---------- chips ----------
+const roleChips = document.getElementById('roleChips');
+ROLES.forEach(r=>{
+  const b=document.createElement('span'); b.className='chip role on'; b.textContent=ROLE_ICON[r]+' '+r;
+  b.onclick=()=>{ state.roles.has(r)?state.roles.delete(r):state.roles.add(r); b.classList.toggle('on'); refresh(); };
+  roleChips.appendChild(b);
+});
+const classChips = document.getElementById('classChips');
+const clsEls = {};
+CLASSES.forEach(k=>{
+  const b=document.createElement('span'); b.className='chip on'; b.textContent=k.n;
+  b.style.setProperty('--c',k.c);
+  const paint=()=>{ const on=state.classes.has(k.n); b.classList.toggle('on',on);
+    b.style.background=on?k.c:''; b.style.borderColor=on?k.c:''; };
+  b.onclick=()=>{ state.classes.has(k.n)?state.classes.delete(k.n):state.classes.add(k.n); paint(); refresh(); };
+  clsEls[k.n]=paint; paint(); classChips.appendChild(b);
+});
+document.getElementById('allCls').onclick=()=>{ CLASSES.forEach(k=>state.classes.add(k.n)); Object.values(clsEls).forEach(f=>f()); refresh(); };
+document.getElementById('noCls').onclick=()=>{ state.classes.clear(); Object.values(clsEls).forEach(f=>f()); refresh(); };
+
+function refresh(){
+  const n=pool().length;
+  document.getElementById('poolCount').textContent=n;
+  document.getElementById('rollBtn').disabled = n===0;
+  document.getElementById('rollGuild').disabled = n===0;
+  document.getElementById('soloNote').textContent = n===0 ? 'No specs match your filters.' : '';
+}
+
+// ---------- tabs ----------
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));
+  document.getElementById('tab-solo').classList.toggle('hidden',t.dataset.tab!=='solo');
+  document.getElementById('tab-guild').classList.toggle('hidden',t.dataset.tab!=='guild');
+});
+
+// ---------- solo roll ----------
+const R = { box:document.getElementById('result'), glow:document.getElementById('glow'),
+  cls:document.getElementById('rCls'), spec:document.getElementById('rSpec'), role:document.getElementById('rRole') };
+function show(s){
+  R.cls.textContent=s.cls; R.cls.style.color=s.color;
+  R.spec.textContent=s.spec; R.spec.style.color=s.color;
+  R.role.textContent=ROLE_ICON[s.role]+'  '+s.role;
+  R.glow.style.background=`radial-gradient(circle,${s.color},transparent 60%)`;
+}
+let rolling=false;
+document.getElementById('rollBtn').onclick=()=>{
+  const p=pool(); if(!p.length||rolling) return;
+  rolling=true; R.box.classList.remove('done'); R.box.classList.add('rolling');
+  const final=pick(p); let steps=0; const total=22;
+  const tick=()=>{
+    steps++;
+    if(steps<total){ show(pick(p)); setTimeout(tick, 40 + steps*steps*0.55); }
+    else{
+      show(final); R.box.classList.remove('rolling'); void R.box.offsetWidth; R.box.classList.add('done');
+      state.last=final; state.history.unshift(final); state.history=state.history.slice(0,10); drawHistory(); rolling=false;
+    }
+  };
+  tick();
+};
+function drawHistory(){
+  const h=document.getElementById('history'); h.innerHTML='';
+  state.history.forEach((s,i)=>{ const e=document.createElement('span'); e.style.color=s.color; e.style.opacity=1-i*0.07;
+    e.textContent=`${s.spec} ${s.cls}`; h.appendChild(e); });
+}
+document.getElementById('copySolo').onclick=()=>{
+  if(!state.last) return toast('Roll first!');
+  copy(`🎲 Rolled: ${state.last.spec} ${state.last.cls} (${state.last.role})`);
+};
+
+// ---------- guild roll ----------
+function roleSlots(n, mode){
+  if(mode==='free') return Array(n).fill(null);
+  const slots=[];
+  if(mode==='dungeon'){
+    for(let i=0;i<n;i++){ const pos=i%5; slots.push(pos===0?'Tank':pos===1?'Healer':'DPS'); }
+  } else { // raid
+    const tanks=Math.min(2,n), heals=Math.min(n-tanks, Math.max(1,Math.round(n/5)));
+    for(let i=0;i<n;i++) slots.push(i<tanks?'Tank':i<tanks+heals?'Healer':'DPS');
+  }
+  return slots;
+}
+function assign(names, mode, unique, doShuffle){
+  const p=pool(); const used=new Set(); const out=[];
+  let slots=roleSlots(names.length, mode);
+  // in dungeon mode keep groups intact but shuffle roles within each group of 5
+  let order=names.map((n,i)=>i);
+  if(doShuffle && mode!=='free'){
+    if(mode==='dungeon'){
+      order=[]; for(let g=0; g<names.length; g+=5){ order.push(...shuffle([...Array(Math.min(5,names.length-g)).keys()].map(x=>x+g))); }
+    } else order=shuffle(order);
+  }
+  const roleFor = new Array(names.length);
+  order.forEach((nameIdx, slotIdx)=>{ roleFor[nameIdx]=slots[slotIdx]; });
+  names.forEach((name,i)=>{
+    const want=roleFor[i];
+    let cands = want ? p.filter(s=>s.role===want) : p;
+    if(!cands.length) cands=p; // fallback if role filtered out
+    let fresh = unique ? cands.filter(s=>!used.has(s.cls+s.spec)) : cands;
+    if(!fresh.length) fresh=cands;
+    const s=pick(fresh); used.add(s.cls+s.spec);
+    out.push({name, ...s, slot:want});
+  });
+  return out;
+}
+function drawGuild(){
+  const mode=document.getElementById('mode').value;
+  const el=document.getElementById('guildOut');
+  if(!state.guild.length){ el.innerHTML=''; return; }
+  let html='<table><thead><tr><th>Player</th><th>Spec</th><th>Class</th><th>Role</th><th></th></tr></thead><tbody>';
+  state.guild.forEach((r,i)=>{
+    if(mode==='dungeon' && i%5===0) html+=`<tr class="grp"><td colspan="5">GROUP ${i/5+1}</td></tr>`;
+    html+=`<tr><td>${esc(r.name)}</td><td style="color:${r.color};font-weight:600">${r.spec}</td>
+      <td style="color:${r.color}">${r.cls}</td><td><span class="pill">${ROLE_ICON[r.role]} ${r.role}</span></td>
+      <td style="text-align:right"><button class="reroll" data-i="${i}">re-roll</button></td></tr>`;
+  });
+  html+='</tbody></table>';
+  el.innerHTML=html;
+  el.querySelectorAll('.reroll').forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.i, cur=state.guild[i];
+    const p=pool(); const unique=document.getElementById('unique').checked;
+    let c = cur.slot ? p.filter(s=>s.role===cur.slot) : p; if(!c.length) c=p;
+    const taken=new Set(state.guild.filter((_,j)=>j!==i).map(r=>r.cls+r.spec));
+    let f=c.filter(s=>s.cls+s.spec!==cur.cls+cur.spec && (!unique||!taken.has(s.cls+s.spec)));
+    if(!f.length) f=c.filter(s=>s.cls+s.spec!==cur.cls+cur.spec);
+    if(!f.length) f=c;
+    state.guild[i]={name:cur.name, slot:cur.slot, ...pick(f)}; drawGuild();
+  });
+}
+function esc(s){ return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
+
+document.getElementById('rollGuild').onclick=()=>{
+  const names=document.getElementById('names').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const note=document.getElementById('guildNote');
+  if(!names.length){ note.textContent='Add at least one player name.'; return; }
+  note.textContent='';
+  const mode=document.getElementById('mode').value;
+  state.guild=assign(names, mode, document.getElementById('unique').checked, document.getElementById('shuffle').checked);
+  const p=pool();
+  if(mode!=='free'){
+    const missing=['Tank','Healer'].filter(r=>!p.some(s=>s.role===r));
+    if(missing.length) note.textContent=`No ${missing.join('/')} specs in your filters — those slots used other specs.`;
+  }
+  drawGuild();
+};
+document.getElementById('copyGuild').onclick=()=>{
+  if(!state.guild.length) return toast('Roll first!');
+  const mode=document.getElementById('mode').value;
+  let lines=['🎲 **Guild Spec Roll**'];
+  state.guild.forEach((r,i)=>{
+    if(mode==='dungeon' && i%5===0) lines.push(`\n**Group ${i/5+1}**`);
+    lines.push(`${ROLE_ICON[r.role]} ${r.name} — ${r.spec} ${r.cls}`);
+  });
+  copy(lines.join('\n'));
+};
+
+// ---------- utils ----------
+function copy(text){
+  navigator.clipboard.writeText(text).then(()=>toast('Copied!')).catch(()=>{
+    const t=document.createElement('textarea'); t.value=text; document.body.appendChild(t); t.select();
+    try{ document.execCommand('copy'); toast('Copied!'); }catch(e){ toast('Copy blocked — select and copy manually'); }
+    t.remove();
+  });
+}
+let tt; function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'),1600); }
+
+refresh();
+</script>
+</body>
+</html>
