@@ -70,9 +70,13 @@
   .count{color:var(--gold);font-weight:600}
   footer{text-align:center;color:var(--muted);font-size:12px;margin-top:26px}
   .hidden{display:none}
+  .mute{position:fixed;top:14px;right:14px;background:var(--panel);border:1px solid var(--line);color:var(--gold);
+    border-radius:999px;width:42px;height:42px;font-size:18px;cursor:pointer;z-index:5}
+  .mute:hover{border-color:var(--gold-dim)}
 </style>
 </head>
 <body>
+<button class="mute" id="muteBtn" title="Toggle sound" aria-label="Toggle sound">🔊</button>
 <div class="wrap">
   <h1>Guild Spec Roller</h1>
   <p class="sub">Let fate decide. A random class &amp; spec from all 40 current Retail specs.</p>
@@ -181,6 +185,48 @@ function rint(n){ const a=new Uint32Array(1); crypto.getRandomValues(a); return 
 function pick(arr){ return arr[rint(arr.length)]; }
 function shuffle(arr){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){const j=rint(i+1);[a[i],a[j]]=[a[j],a[i]];} return a; }
 
+// ---------- sound (synthesised with Web Audio — no files needed) ----------
+let actx=null, muted=false;
+try{ muted = localStorage.getItem('specRollerMuted')==='1'; }catch(e){}
+const muteBtn=document.getElementById('muteBtn');
+const paintMute=()=>{ muteBtn.textContent = muted ? '🔇' : '🔊'; };
+paintMute();
+muteBtn.onclick=()=>{ muted=!muted; paintMute(); try{ localStorage.setItem('specRollerMuted', muted?'1':'0'); }catch(e){} };
+function audio(){
+  if(muted) return null;
+  try{
+    if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state==='suspended') actx.resume();
+    return actx;
+  }catch(e){ return null; }
+}
+function tone(freq, start, dur, {type='triangle', vol=0.15, slideTo=null}={}){
+  const a=audio(); if(!a) return;
+  const t=a.currentTime+start, o=a.createOscillator(), g=a.createGain();
+  o.type=type; o.frequency.setValueAtTime(freq,t);
+  if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo,t+dur);
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(vol,t+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t+dur+0.05);
+}
+// a soft "click" that rises in pitch as the spin slows
+function sfxTick(progress){ tone(500+progress*700, 0, 0.05, {type:'square', vol:0.05}); }
+// a rising major arpeggio with a shimmer on top
+function sfxReveal(role){
+  const roots={Tank:196, Healer:293.66, DPS:246.94}; // G3, D4, B3: each role sounds slightly different
+  const r=roots[role]||246.94, chord=[1,1.25,1.5,2];
+  chord.forEach((m,i)=>tone(r*m, i*0.08, 0.9-i*0.1, {vol:0.12}));
+  tone(r*4, 0.32, 0.6, {type:'sine', vol:0.06});
+  tone(r*5, 0.40, 0.5, {type:'sine', vol:0.04});
+  tone(r/2, 0, 0.5, {type:'sine', vol:0.12, slideTo:r/2*0.98}); // low thump
+}
+// a quick whoosh-and-chime for rolling the whole group
+function sfxGroup(){
+  tone(220,0,0.35,{type:'sawtooth',vol:0.04,slideTo:880});
+  [523.25,659.25,783.99,1046.5].forEach((f,i)=>tone(f,0.3+i*0.06,0.5,{vol:0.09}));
+}
+
 const pool = () => SPECS.filter(s => state.roles.has(s.role) && state.classes.has(s.cls));
 
 // ---------- chips ----------
@@ -234,9 +280,9 @@ document.getElementById('rollBtn').onclick=()=>{
   const final=pick(p); let steps=0; const total=22;
   const tick=()=>{
     steps++;
-    if(steps<total){ show(pick(p)); setTimeout(tick, 40 + steps*steps*0.55); }
+    if(steps<total){ show(pick(p)); sfxTick(steps/total); setTimeout(tick, 40 + steps*steps*0.55); }
     else{
-      show(final); R.box.classList.remove('rolling'); void R.box.offsetWidth; R.box.classList.add('done');
+      show(final); sfxReveal(final.role); R.box.classList.remove('rolling'); void R.box.offsetWidth; R.box.classList.add('done');
       state.last=final; state.history.unshift(final); state.history=state.history.slice(0,10); drawHistory(); rolling=false;
     }
   };
@@ -308,7 +354,7 @@ function drawGuild(){
     let f=c.filter(s=>s.cls+s.spec!==cur.cls+cur.spec && (!unique||!taken.has(s.cls+s.spec)));
     if(!f.length) f=c.filter(s=>s.cls+s.spec!==cur.cls+cur.spec);
     if(!f.length) f=c;
-    state.guild[i]={name:cur.name, slot:cur.slot, ...pick(f)}; drawGuild();
+    state.guild[i]={name:cur.name, slot:cur.slot, ...pick(f)}; sfxReveal(state.guild[i].role); drawGuild();
   });
 }
 function esc(s){ return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
@@ -325,6 +371,7 @@ document.getElementById('rollGuild').onclick=()=>{
     const missing=['Tank','Healer'].filter(r=>!p.some(s=>s.role===r));
     if(missing.length) note.textContent=`No ${missing.join('/')} specs in your filters — those slots used other specs.`;
   }
+  sfxGroup();
   drawGuild();
 };
 document.getElementById('copyGuild').onclick=()=>{
